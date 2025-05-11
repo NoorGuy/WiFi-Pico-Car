@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Goonmobile</title>
+    <style>
+        button {
+            font-size: 24px;
+            padding: 20px 40px;
+            margin: 10px;
+            border-radius: 10px;
+        }
+    </style>
+    <script>
+        // This function is used to send a command by navigating to a URL
+        function sendCommand(url) {
+            window.location.href = url;
+        }
+
+        // Listen for keydown events
+        document.addEventListener("keydown", function(event) {
+            switch(event.key.toLowerCase()) {
+                case "w": // Forward
+                    sendCommand("/led.cgi?led=1");
+                    break;
+                case "s": // Reverse
+                    sendCommand("/led.cgi?led=2");
+                    break;
+                case "d": // Right
+                    sendCommand("/led.cgi?led=3");
+                    break;
+                case "a": // Left
+                    sendCommand("/led.cgi?led=4");
+                    break;
+                case " ": // Space bar to STOP
+                    sendCommand("/led.cgi?led=0");
+                    break;
+                case "r": // R to Refresh
+                    sendCommand("/index.shtml");
+                    break;
+            }
+        });
+    </script>
+</head>
+<body>
+    <h1>Car controls:</h1>
+    <a href="/led.cgi?led=1"><button>FWD</button></a>
+    <a href="/led.cgi?led=2"><button>RVR</button></a>
+    <a href="/led.cgi?led=4"><button>L</button></a>
+    <a href="/led.cgi?led=3"><button>R</button></a>
+    <a href="/led.cgi?led=0"><button>STOP</button></a>
+    <br><br>
+    <a href="/index.shtml">Refresh</a>
+    <p>Use keyboard.: W = Forward, A = Left, D = Right, S = Reverse, Space = Stop, R = Refresh</p>
+</body>
+</html>
