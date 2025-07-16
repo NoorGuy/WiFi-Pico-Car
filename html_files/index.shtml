@@ -53,5 +53,9 @@
     <br><br>
     <a href="/index.shtml">Refresh</a>
     <p>Use keyboard.: W = Forward, A = Left, D = Right, S = Reverse, Space = Stop, R = Refresh</p>
+    <h2>GPS Coordinates</h2>
+    <p>Latitude: <!--#lat--></p>
+    <p>Longitude: <!--#lon--></p>
+
 </body>
 </html>
