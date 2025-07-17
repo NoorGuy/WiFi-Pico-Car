@@ -11,6 +11,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include "hardware/i2c.h"
+
+// Compass
+#define I2C_PORT i2c1
+#define I2C_SDA 2
+#define I2C_SCL 3
+#define addr 0x0D
+
+float get_heading(int16_t x, int16_t y);
+void calibrate_compass(int16_t x, int16_t y, int16_t* x_corrected, int16_t* y_corrected);
+
+// Coordination stuff
+void go_to_home(void);
+
 
 //GPS
 #define UART_ID uart0
@@ -140,8 +154,143 @@ float calculateBearing(float lat1, float lon1, float lat2, float lon2) {
     return fmod((bearing * (180.0f / M_PI) + 360.0f), 360.0f); // Normalize to 0–360
 }
 
+// Compass
 
-void go_forward(void) {
+void compass_init(void) 
+{
+    // Wait for compass to boot up fr
+    sleep_ms(2000);
+    uint8_t config[2];
+    config[0] = 0x09;
+    config[1] = 0b00011101;
+    i2c_write_blocking(I2C_PORT, addr, config, 2, true);
+
+    // Continuous mode
+    uint8_t data1[2];
+    data1[0] = 0x0B;
+    data1[1] = 0x01;
+    i2c_write_blocking(I2C_PORT, addr, data1, 2, true);
+
+    uint8_t data2[2];
+    data2[0] = 0x09;
+    data2[1] = 0x1D;
+
+    i2c_write_blocking(I2C_PORT, addr, data2, 2, false);
+}
+
+float get_heading(int16_t x, int16_t y) 
+{
+    // atan2f returns radians between -pi and +pi
+    float heading_rad = atan2f((float)y, (float)x);
+
+    // Convert radians to degrees
+    float heading_deg = heading_rad * (180.0f / M_PI);
+
+    // Normalize to 0–360 degrees
+    if (heading_deg < 0) {
+        heading_deg += 360.0f;
+    }
+    return heading_deg;
+}
+
+void calibrate_compass(int16_t x, int16_t y, int16_t* x_corrected, int16_t* y_corrected) // ASS? where?
+{
+    int16_t x_min = -158, x_max = 1162;
+    int16_t y_min = -950, y_max = 981;
+    //int16_t z_min = -485, z_max = 358;
+
+    int16_t x_offset = (x_min + x_max) / 2;
+    int16_t y_offset = (y_min + y_max) / 2;
+
+    *x_corrected = x - x_offset;
+    *y_corrected = y - y_offset;
+}
+
+float read_compass(void) 
+{ 
+    // Measurement
+    uint8_t status_reg = 0x06;
+    uint8_t status = 0;
+    i2c_write_blocking(I2C_PORT, addr, &status_reg, 1, true);
+    i2c_read_blocking(I2C_PORT, addr, &status, 1, false);
+
+    if ((status & 0x01) == 1) 
+    {
+        uint8_t data_reg = 0x00;
+        uint8_t dataComp[6];
+
+        i2c_write_blocking(I2C_PORT, addr, &data_reg, 1, true);
+        i2c_read_blocking(I2C_PORT, addr, dataComp, 6, false);
+        int16_t x = (dataComp[1] << 8) | dataComp[0];
+        int16_t y = (dataComp[3] << 8) | dataComp[2];
+        //int16_t z = (dataComp[5] << 8) | dataComp[4];
+
+        //printf("%d %d\n", x, y);
+        int16_t x_corrected, y_corrected;
+        calibrate_compass(x, y, &x_corrected, &y_corrected);
+        return get_heading(x_corrected, y_corrected);
+        sleep_ms(100);
+
+    }
+}
+
+// Autonomous coordination
+
+void go_to_home(void) 
+{
+        
+    while(1) 
+    {
+        // Bearing
+        float homeBearing = calculateBearing(current_latitude, current_longitude, home_lat, home_long);
+        //printf("Bearing to home: %.2f degrees\n", homeBearing);
+        read_gps_data();  // actively read and update current_latitude and current_longitude
+
+        // Convert to integer representation (scaled by 1,000,000)
+        int32_t int_lat = (int32_t)(current_latitude * 1000000);
+        int32_t int_lon = (int32_t)(current_longitude * 1000000);
+
+        int32_t target_lat = (int32_t)(home_lat * 1000000);
+        int32_t target_lon = (int32_t)(home_long * 1000000);
+
+        // Compass heading
+        float car_heading = read_compass();
+
+        float error = homeBearing - car_heading;
+
+        if (error < -180.0f) error +=360.0f;
+        if (error > 180.0f) error -=360.0f;
+
+        if (error > 0.0f) {
+            turn_right_flag = true;
+            turn_left_flag = false;
+            go_forward_flag = false;
+        }
+
+        else if (error < 0.0f) {
+            turn_left_flag = true;
+            turn_right_flag = false;
+            go_forward_flag = false;
+        }
+
+        else if (fabs(error) < 5.0f) {
+            go_forward_flag = true;
+            turn_right_flag = false;
+            turn_left_flag = false;
+        }
+        
+        // Simple threshold check (~3m range)
+        else if (abs(int_lat - target_lat) < 300 && abs(int_lon - target_lon) < 300) {
+            stop_flag = true;
+            break;
+            }
+    }
+
+}
+
+
+void go_forward(void) 
+{
     gpio_put(IN_1, 1); // forward
     gpio_put(IN_3, 1); // forward
     gpio_put(IN_2, 0);
@@ -151,7 +300,8 @@ void go_forward(void) {
     printf("Moving forward\n");
 }
 
-void go_back(void) {
+void go_back(void) 
+{
     gpio_put(IN_2, 1);
     gpio_put(IN_4, 1);
     gpio_put(IN_1, 0);
@@ -161,7 +311,8 @@ void go_back(void) {
     printf("Moving backward\n");
 }
 
-void turn_left(void) {
+void turn_left(void) 
+{
     gpio_put(IN_3, 1); // forward
     gpio_put(IN_4, 0);
     gpio_put(EN_B, 1);
@@ -169,7 +320,8 @@ void turn_left(void) {
     printf("Turning left\n");
 }
 
-void turn_right(void) {
+void turn_right(void) 
+{
     gpio_put(IN_1, 1); // forward
     gpio_put(IN_2, 0);
     gpio_put(EN_A, 1);
@@ -177,18 +329,32 @@ void turn_right(void) {
     printf("Turning right\n");
 }
 
-void stop(void) {
+void stop(void) 
+{
     gpio_put(EN_A, 0);
     gpio_put(EN_B, 0);
     printf("Stopping\n");
 }
 
-int main() {
+int main() 
+{
     stdio_init_all();
+
+    // Compass and I2C initialization
+
+    // I2C Initialisation. Using it at 400Khz.
+    i2c_init(I2C_PORT, 400000);
+    gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
+    gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
+    gpio_pull_up(I2C_SDA);
+    gpio_pull_up(I2C_SCL);
+    //initialize the compass uwu
+    compass_init();
+
+
     //GPS initialization
     init_uart();
-
- // printf("GPS Module Initialized (Parsing GPRMC)...\n");
+    //printf("GPS Module Initialized (Parsing GPRMC)...\n");
 
     // MOTOR DRIVER
     gpio_init(EN_A);
@@ -234,22 +400,9 @@ int main() {
 
     // Infinite loop to execute actions based on flags
     while (1) {
-        // Bearing
-        float homeBearing = calculateBearing(current_latitude, current_longitude, home_lat, home_long);
-      //printf("Bearing to home: %.2f degrees\n", homeBearing);
-        read_gps_data();  // actively read and update current_latitude and current_longitude
 
-        // Convert to integer representation (scaled by 1,000,000)
-        int32_t int_lat = (int32_t)(current_latitude * 1000000);
-        int32_t int_lon = (int32_t)(current_longitude * 1000000);
-
-        int32_t target_lat = (int32_t)(home_lat * 1000000);
-        int32_t target_lon = (int32_t)(home_long * 1000000);
-
-        // Simple threshold check (~3m range)
-        if (abs(int_lat - target_lat) < 300 && abs(int_lon - target_lon) < 300) {
-            stop_flag = true;
-            }
+        float car_heading = read_compass();
+        printf("%f\n", car_heading);
         
         if (go_forward_flag) {
             go_forward();
@@ -272,6 +425,7 @@ int main() {
         if (go_forward_flag || go_back_flag || turn_left_flag || turn_right_flag) {
             stop_flag = false; // Ensure stop is cleared when a new command is triggered
         }
+
 
     }
 
