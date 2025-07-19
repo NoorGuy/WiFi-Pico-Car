@@ -239,9 +239,12 @@ float read_compass(void)
 void GPS_waypoint(void)  // FOR TESTING PURPOSES 
 {
 
-GPS_data[gps_index][0] = current_latitude;
-GPS_data[gps_index][1] = current_longitude;
-gps_index += 1;
+if (gps_index < 4096) 
+{
+    GPS_data[gps_index][0] = current_latitude;
+    GPS_data[gps_index][1] = current_longitude;
+    gps_index += 1;
+}
 
 }
 
@@ -308,7 +311,7 @@ void go_to_home(void)
         float previous_longitude = GPS_data[gps_index][1]; // FOR TESTING PURPOSES
 
         //float homeBearing = calculateBearing(current_latitude, current_longitude, home_lat, home_long);
-        float homeBearing = calculateBearing(current_latitude, current_longitude, previous_latitude, previous_latitude);  // TESTING
+        float homeBearing = calculateBearing(current_latitude, current_longitude, previous_latitude, previous_longitude);  // TESTING
 
         // Convert to integer representation for comparing distances (scaled by 1,000,000)
         int32_t int_lat = (int32_t)(current_latitude * 1000000);
@@ -424,12 +427,12 @@ int main()
         
         int condition = 1; // FOR TESTING, CHANGE LATER
         
-        if ((condition && current_latitude && current_latitude) > 0.0f)
+        if ((condition && current_latitude && current_longitude) > 0.0f)
         {
             go_to_home();
             printf("Going to home!\n");
         }
-        else if (condition == 0);
+        else if (condition == 0)
         {
             printf("Conditions not suitable for return to home\n");
             break;
