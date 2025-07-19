@@ -13,6 +13,10 @@
 #include <math.h>
 #include "hardware/i2c.h"
 
+// FOR TESTING
+uint16_t GPS_data[4096][2];  // 2D array for lat/lon
+int gps_index = 0;           // Global index for GPS entries
+
 // Compass
 #define I2C_PORT i2c1
 #define I2C_SDA 2
@@ -232,6 +236,14 @@ float read_compass(void)
     }
 }
 
+void GPS_waypoint(void)  // FOR TESTING PURPOSES 
+{
+
+GPS_data[gps_index][0] = current_latitude;
+GPS_data[gps_index][1] = current_longitude;
+gps_index += 1;
+
+}
 
 void go_forward(void) 
 {
@@ -288,9 +300,15 @@ void go_to_home(void)
     // Bearing
         //float homeBearing = calculateBearing(current_latitude, current_longitude, home_lat, home_long);  CHANGE THIS LATER
         //printf("Bearing to home: %.2f degrees\n", homeBearing);
+
+
         read_gps_data();
 
-        float homeBearing = calculateBearing(current_latitude, current_longitude, home_lat, home_long);
+        float previous_latitude = GPS_data[gps_index][0]; // FOR TESTING PURPOSES
+        float previous_longitude = GPS_data[gps_index][1]; // FOR TESTING PURPOSES
+
+        //float homeBearing = calculateBearing(current_latitude, current_longitude, home_lat, home_long);
+        float homeBearing = calculateBearing(current_latitude, current_longitude, previous_latitude, previous_latitude);  // TESTING
 
         // Convert to integer representation for comparing distances (scaled by 1,000,000)
         int32_t int_lat = (int32_t)(current_latitude * 1000000);
@@ -312,21 +330,25 @@ void go_to_home(void)
         if (abs(int_lat - target_lat) < 300 && abs(int_lon - target_lon) < 300) 
         {
             stop();
+            gps_index -= 1;  // TESTING
         }
 
         if (fabs(error) < 5.0f) 
         {
             go_forward();
+            gps_index -= 1;  // TESTING
         }
         
         else if (homeBearing > car_heading) 
         {
             turn_right();
+            gps_index -= 1;  // TESTING
         }
         
         else if (homeBearing < car_heading) 
         {
             turn_left();
+            gps_index -= 1;  // TESTING
         }
 
 }
@@ -402,12 +424,12 @@ int main()
         
         int condition = 1; // FOR TESTING, CHANGE LATER
         
-        if ((condition && current_latitude && current_latitude) > 0)
+        if ((condition && current_latitude && current_latitude) > 0.0f)
         {
             go_to_home();
             printf("Going to home!\n");
         }
-        else
+        else if (condition == 0);
         {
             printf("Conditions not suitable for return to home\n");
             break;
@@ -415,18 +437,23 @@ int main()
 
         if (go_forward_flag) {
             go_forward();
+            GPS_waypoint();   // TESTING
             // Remove the flag reset here to keep moving forward continuously
         } else if (go_back_flag) {
             go_back();
+            GPS_waypoint();   // TESTING
             // Remove the flag reset here to keep moving backward continuously
         } else if (turn_left_flag) {
             turn_left();
+            GPS_waypoint();   // TESTING
             // Remove the flag reset here to keep turning left continuously
         } else if (turn_right_flag) {
             turn_right();
+            GPS_waypoint();   // TESTING
             // Remove the flag reset here to keep turning right continuously
         } else if (stop_flag) {
             stop();
+            GPS_waypoint();   // TESTING
             // Do not clear stop_flag here so it keeps stopping continuously
         }
 
