@@ -12,10 +12,13 @@
 #include <stdlib.h>
 #include <math.h>
 #include "hardware/i2c.h"
+#include "pico/time.h" // microwave timer (TEST)
 
 // FOR TESTING
-uint16_t GPS_data[4096][2];  // 2D array for lat/lon
-int gps_index = 0;           // Global index for GPS entries
+float GPS_data[4096][2];  // 2D array my beloved
+int gps_index = 0;
+
+#define ESP_EN 16
 
 // Compass
 #define I2C_PORT i2c1
@@ -56,7 +59,7 @@ const float home_long = -122.4194;
 #define IN_3 12 // forward
 #define IN_4 13 // back
 
-// WIFI Credentials - take care if pushing to github!
+// WIFI Credentials - take care if pushing to github! (i will not)
 const char WIFI_SSID[] = "KAFI4G";
 const char WIFI_PASSWORD[] = "126065AS";
 
@@ -158,7 +161,6 @@ float calculateBearing(float lat1, float lon1, float lat2, float lon2) {
 }
 
 // Compass
-
 void compass_init(void) 
 {
     // Wait for compass to boot up fr
@@ -236,16 +238,22 @@ float read_compass(void)
     }
 }
 
-void GPS_waypoint(void)  // FOR TESTING PURPOSES 
+void GPS_waypoint(void)
 {
+    static uint64_t last_log_time = 0;
+    const uint64_t LOG_INTERVAL = 5 * 1000000; // 5 seconds
 
-if (gps_index < 4096) 
-{
-    GPS_data[gps_index][0] = current_latitude;
-    GPS_data[gps_index][1] = current_longitude;
-    gps_index += 1;
-}
+    uint64_t now = time_us_64();
 
+    if ((now - last_log_time) >= LOG_INTERVAL && gps_index < 4096)
+    {
+        GPS_data[gps_index][0] = current_latitude;
+        GPS_data[gps_index][1] = current_longitude;
+        gps_index++;
+
+        last_log_time = now;
+        printf("Logged waypoint %d: %.6f, %.6f\n", gps_index, current_latitude, current_longitude);
+    }
 }
 
 void go_forward(void) 
@@ -322,7 +330,7 @@ void go_to_home(void)
         
         // Compass heading
         float car_heading = read_compass();
-        printf("%f\n", car_heading);
+        //printf("%f\n", car_heading);
 
         float error = homeBearing - car_heading;
 
@@ -375,6 +383,10 @@ int main()
     init_uart();
     //printf("GPS Module Initialized (Parsing GPRMC)...\n");
 
+    // For testing
+    gpio_init(ESP_EN);
+    gpio_set_dir(ESP_EN, GPIO_IN);
+
     // MOTOR DRIVER
     gpio_init(EN_A);
     gpio_set_dir(EN_A, GPIO_OUT);
@@ -425,17 +437,17 @@ int main()
 
         read_gps_data();  // actively read and update current_latitude and current_longitude
         
-        int condition = 1; // FOR TESTING, CHANGE LATER
+        int condition = gpio_get(ESP_EN); // FOR TESTING, CHANGE LATER
         
-        if ((condition && current_latitude && current_longitude) > 0.0f)
+        if (condition == 1)
         {
+            go_forward_flag = false;
+            go_back_flag = false;
+            turn_left_flag = false;
+            turn_right_flag = false;
+            stop_flag = false;
             go_to_home();
             printf("Going to home!\n");
-        }
-        else if (condition == 0)
-        {
-            printf("Conditions not suitable for return to home\n");
-            break;
         }
 
         if (go_forward_flag) {
@@ -459,6 +471,7 @@ int main()
             GPS_waypoint();   // TESTING
             // Do not clear stop_flag here so it keeps stopping continuously
         }
+
 
         // Optionally reset flags when a new command is triggered
         if (go_forward_flag || go_back_flag || turn_left_flag || turn_right_flag) {
