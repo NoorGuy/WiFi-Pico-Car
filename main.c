@@ -341,25 +341,24 @@ void go_to_home(void)
         if (abs(int_lat - target_lat) < 300 && abs(int_lon - target_lon) < 300) 
         {
             stop();
+            if (gps_index > 0) {
             gps_index -= 1;  // TESTING
+            }
         }
 
-        if (fabs(error) < 5.0f) 
+        if (fabs(error) < 4.0f) 
         {
             go_forward();
-            gps_index -= 1;  // TESTING
         }
         
         else if (homeBearing > car_heading) 
         {
             turn_right();
-            gps_index -= 1;  // TESTING
         }
         
-        else if (homeBearing < car_heading) 
+        else if(homeBearing < car_heading)
         {
             turn_left();
-            gps_index -= 1;  // TESTING
         }
 
 }
