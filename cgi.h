@@ -12,6 +12,7 @@ extern volatile bool go_back_flag;
 extern volatile bool turn_left_flag;
 extern volatile bool turn_right_flag;
 extern volatile bool stop_flag;
+extern volatile bool go_to_home_flag;
 
 // CGI handler for motor control via /led.cgi
 const char * cgi_led_handler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]) {
@@ -21,6 +22,7 @@ const char * cgi_led_handler(int iIndex, int iNumParams, char *pcParam[], char *
     turn_left_flag = false;
     turn_right_flag = false;
     stop_flag = false;
+    go_to_home_flag = false;
 
     // Parse parameters safely
     for (int i = 0; i < iNumParams; i++) {
@@ -35,6 +37,8 @@ const char * cgi_led_handler(int iIndex, int iNumParams, char *pcParam[], char *
                 turn_right_flag = true;
             } else if (strcmp(pcValue[i], "4") == 0) {
                 turn_left_flag = true;
+            } else if (strcmp(pcValue[i], "5") == 0) {
+                go_to_home_flag = true;
             }
         }
     }

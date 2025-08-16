@@ -69,6 +69,7 @@ volatile bool go_back_flag = false;
 volatile bool turn_left_flag = false;
 volatile bool turn_right_flag = false;
 volatile bool stop_flag = false;
+volatile bool go_to_home_flag = false;
 
 void init_uart() {
     uart_init(UART_ID, BAUD_RATE);
@@ -438,7 +439,7 @@ int main()
         
         int condition = gpio_get(ESP_EN); // FOR TESTING, CHANGE LATER
         
-        if (condition == 1)
+        if (condition == 1 || go_to_home_flag)
         {
             go_forward_flag = false;
             go_back_flag = false;

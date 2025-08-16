@@ -13,31 +13,32 @@
         }
     </style>
     <script>
-        // This function is used to send a command by navigating to a URL
         function sendCommand(url) {
             window.location.href = url;
         }
 
-        // Listen for keydown events
         document.addEventListener("keydown", function(event) {
             switch(event.key.toLowerCase()) {
-                case "w": // Forward
+                case "w":
                     sendCommand("/led.cgi?led=1");
                     break;
-                case "s": // Reverse
+                case "s":
                     sendCommand("/led.cgi?led=2");
                     break;
-                case "d": // Right
+                case "d":
                     sendCommand("/led.cgi?led=3");
                     break;
-                case "a": // Left
+                case "a":
                     sendCommand("/led.cgi?led=4");
                     break;
-                case " ": // Space bar to STOP
+                case " ":
                     sendCommand("/led.cgi?led=0");
                     break;
-                case "r": // R to Refresh
+                case "r":
                     sendCommand("/index.shtml");
+                    break;
+                case "h": // Press H to go home
+                    sendCommand("/led.cgi?led=5");
                     break;
             }
         });
@@ -51,11 +52,12 @@
     <a href="/led.cgi?led=3"><button>R</button></a>
     <a href="/led.cgi?led=0"><button>STOP</button></a>
     <br><br>
+    <a href="/led.cgi?led=5"><button style="background-color: lightgreen;">Go to Home</button></a>
+    <br><br>
     <a href="/index.shtml">Refresh</a>
-    <p>Use keyboard.: W = Forward, A = Left, D = Right, S = Reverse, Space = Stop, R = Refresh</p>
+    <p>Keyboard: W = Forward, A = Left, D = Right, S = Reverse, Space = Stop, H = Go to Home, R = Refresh</p>
     <h2>GPS Coordinates</h2>
     <p>Latitude: <!--#lat--></p>
     <p>Longitude: <!--#lon--></p>
-
 </body>
 </html>

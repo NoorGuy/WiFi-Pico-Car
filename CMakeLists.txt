@@ -43,6 +43,7 @@ target_link_libraries(${PROGRAM_NAME}
     pico_stdlib
     hardware_adc
     hardware_i2c
+    hardware_pwm
 )
 
 pico_enable_stdio_usb(${PROGRAM_NAME} TRUE)
